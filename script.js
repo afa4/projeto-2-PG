@@ -3,40 +3,101 @@ var objectInput = document.getElementById('objectInput');
 var ligntInput = document.getElementById('lightInput');
 var submitButton = document.getElementById('submitButton');
 
-var cameraData = [];
-var objectData = [];
+var points = [];
+var triangles = [];
 var lightData = [];
 var camera = {};
+class Point {
+  constructor(x, y, z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+  // Produto Escalar
+  dotProduct(v) {
+    return (this.x * v.x) + (this.y * v.y) + (this.z * v.z);
+  }
+  // Produto Vetorial
+  crossProduct(v) {
+    return new Point(this.y * v.z - this.z * v.y, this.z * v.x - this.x * v.z, this.x * v.y - this.y * v.x);
+  }
+  mult(n) {
+    return new Point(n * this.x, n * this.y, n * this.z);
+  }
+  sub(v) {
+    return new Point(this.x - v.x, this.y - v.y, this.z - v.z);
+  }
+  // Projetar v no ponto em questão
+  proj(v) {
+    var dotsResult = v.dotProduct(this) / this.dotProduct(this);
+    return this.mult(dotsResult);
+  }
+  normalize() {
+    var norm = Math.sqrt(this.dotProduct(this));
+    var v = this.mult(1/norm);
+    this.x = v.x;
+    this.y = v.y;
+    this.z = v.z;
+    return this;
+  }
+}
+
+class Triangle{
+  constructor(p1, p2, p3){
+    this.p1 = p1;
+    this.p2 = p2;
+    this.p3 = p3;
+  }
+}
 
 function setupCamera(){
     var reader = new FileReader();
 
     reader.onload = function(e) {
-        cameraData = reader.result.split('\n');
+        var cameraData = reader.result.split('\n');
         var fileLine = cameraData[0].split(' ');
-        camera.x = Number(fileLine[0]);
-        camera.y = Number(fileLine[1]);
-        camera.z = Number(fileLine[2]);
+        camera.Pos = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         fileLine = cameraData[1].split(' ');
-        camera.N = {};
-        camera.N.x = Number(fileLine[0]);
-        camera.N.y = Number(fileLine[1]);
-        camera.N.z = Number(fileLine[2]);
+        camera.N = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         fileLine = cameraData[2].split(' ');
-        camera.V = {};
-        camera.V.x = Number(fileLine[0]);
-        camera.V.y = Number(fileLine[1]);
-        camera.V.z = Number(fileLine[2]);
+        camera.V = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        // Ortogonizar vetor V
+        camera.V = camera.V.sub(camera.N.proj(camera.V));
         fileLine = cameraData[3].split(' ');
         camera.d = Number(fileLine[0]);
         camera.hx = Number(fileLine[1]);
         camera.hy = Number(fileLine[2]);
+        // Normalizar V e N para calcular U já normalizado
+        camera.V.normalize();
+        camera.N.normalize();
+        camera.U = camera.N.crossProduct(camera.V);
     }
     var file = cameraInput.files[0];
     reader.readAsText(file);
 }
 
+function setupObject() {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var objectData = reader.result.split('\n');
+      var fileLine = objectData[0].split(' ');
+      var nPoints = Number(fileLine[0]);
+      var nTri = Number(fileLine[1]);
+      for (var i = 1; i <= nPoints; i++) {
+        fileLine = objectData[i].split(' ');
+        points[i-1] = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+      }
+      for (var i = nPoints + 1; i <= nPoints + nTri; i++) {
+        fileLine = objectData[i].split(' ');
+        triangles[i - nPoints - 1] = new Triangle(Number(fileLine[0]) - 1, Number(fileLine[1]) - 1, Number(fileLine[2]) - 1);
+      }
+    }
+    var file = objectInput.files[0];
+    reader.readAsText(file);
+}
+
 submitButton.addEventListener('click', e => {
     setupCamera();
-    console.log(camera);
+    setupObject();
+    console.log(triangles);
 });
