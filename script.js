@@ -127,7 +127,6 @@ function setupLight(){
 }
 
 function setupNormals(){
-    var normals = [];
     for (var i = 0; i < triangles.length; i++) {
         var a = points[triangles[i].p1];
         var b = points[triangles[i].p2];
@@ -138,11 +137,10 @@ function setupNormals(){
 
         var normal = v1.crossProduct(v2).normalize();
 
-        normals[triangles[i].p1] += normal;
-        normals[triangles[i].p2] += normal;
-        normals[triangles[i].p3] += normal;
+        pointNormals[triangles[i].p1] += normal;
+        pointNormals[triangles[i].p2] += normal;
+        pointNormals[triangles[i].p3] += normal;
     }
-    return normals;
 }
 
 submitButton.addEventListener('click', e => {
