@@ -36,3 +36,9 @@ footer{
 #addButton{
     border-radius: 100px;
 }
+
+#a {
+    max-height: 50%;
+    overflow-y:auto;
+    text-align: center;
+}

@@ -40,6 +40,11 @@ class Point {
     this.z = v.z;
     return this;
   }
+  adaptView() {
+    return new Point(this.x * camera.U.x + this.y * camera.U.y + this.z * camera.U.z,
+       this.x * camera.V.x + this.y * camera.V.y + this.z * camera.V.z,
+       this.x * camera.N.x + this.y * camera.N.y + this.z * camera.N.z);
+  }
 }
 
 class Triangle{
@@ -85,7 +90,8 @@ function setupObject() {
       var nTri = Number(fileLine[1]);
       for (var i = 1; i <= nPoints; i++) {
         fileLine = objectData[i].split(' ');
-        points[i-1] = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        var xPoint = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        points[i-1] = xPoint.adaptView();
       }
       for (var i = nPoints + 1; i <= nPoints + nTri; i++) {
         fileLine = objectData[i].split(' ');
@@ -101,7 +107,8 @@ function setupLight(){
     reader.onload = function(e){
         var lightData = reader.result.split('\n');
         var fileLine = lightData[0].split(' ');
-        light.Pos = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        var lPos = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        light.Pos = lPos.adaptView();
         light.ka = Number(lightData[1]);
         fileLine = lightData[2].split(' ')
         light.ia = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
@@ -136,5 +143,4 @@ submitButton.addEventListener('click', e => {
     setupCamera();
     setupObject();
     setupLight();
-    console.log(triangles);
 });
