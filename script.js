@@ -5,7 +5,7 @@ var submitButton = document.getElementById('submitButton');
 
 var points = [];
 var triangles = [];
-var lightData = [];
+var light = {};
 var camera = {};
 class Point {
   constructor(x, y, z) {
@@ -93,6 +93,27 @@ function setupObject() {
       }
     }
     var file = objectInput.files[0];
+    reader.readAsText(file);
+}
+
+function setupLight(){
+    var reader = new FileReader();
+    reader.onload = function(e){
+        var lightData = reader.result.split('\n');
+        var fileLine = lightData[0].split(' ');
+        light.Pos = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        light.ka = Number(lightData[1]);
+        fileLine = lightData[2].split(' ')
+        light.ia = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        light.kd = Number(lightData[3]);
+        fileLine = lightData[4].split(' ')
+        light.od = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        light.ks = Number(lightData[5]);
+        fileLine = lightData[6].split(' ');
+        light.il = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        light.n = Number(lightData[7]);
+    }
+    var file = lightInput.files[0];
     reader.readAsText(file);
 }
 
