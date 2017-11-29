@@ -4,9 +4,11 @@ var ligntInput = document.getElementById('lightInput');
 var submitButton = document.getElementById('submitButton');
 
 var points = [];
+var pointNormals = [];
 var triangles = [];
 var light = {};
 var camera = {};
+
 class Point {
   constructor(x, y, z) {
     this.x = x;
@@ -124,7 +126,7 @@ function setupLight(){
     reader.readAsText(file);
 }
 
-function setupTriangles(){
+function setupNormals(){
     var normals = [];
     for (var i = 0; i < triangles.length; i++) {
         var a = points[triangles[i].p1];
@@ -134,13 +136,18 @@ function setupTriangles(){
         var v1 = a.sub(b);
         var v2 = a.sub(c);
 
-        normals[i] = v1.crossProduct(v2).normalize();
+        var normal = v1.crossProduct(v2).normalize();
+
+        normals[triangles[i].p1] += normal;
+        normals[triangles[i].p2] += normal;
+        normals[triangles[i].p3] += normal;
     }
-    reuturn normals;
+    return normals;
 }
 
 submitButton.addEventListener('click', e => {
     setupCamera();
     setupObject();
     setupLight();
+    setupNormals();
 });
