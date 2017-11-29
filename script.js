@@ -117,15 +117,24 @@ function setupLight(){
     reader.readAsText(file);
 }
 
+function setupTriangles(){
+    var normals = [];
+    for (var i = 0; i < triangles.length; i++) {
+        var a = points[triangles[i].p1];
+        var b = points[triangles[i].p2];
+        var c = points[triangles[i].p3];
+
+        var v1 = a.sub(b);
+        var v2 = a.sub(c);
+
+        normals[i] = v1.crossProduct(v2).normalize();
+    }
+    reuturn normals;
+}
+
 submitButton.addEventListener('click', e => {
     setupCamera();
     setupObject();
+    setupLight();
     console.log(triangles);
-});
-
-addButton.addEventListener('click', e => {
-    console.log("a");
-    var x = document.createElement("INPUT");
-    x.setAttribute("type", "file");
-    a.appendChild(x);
 });
