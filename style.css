@@ -13,7 +13,6 @@ body {
 #menu{
   width:25%;
   background-color: #00b3b3;
-  margin-right:2%;
   float: left;
   height: 100vh;
     text-align: center;
@@ -21,8 +20,7 @@ body {
 
 #board{
   background-color: #272727;
-  width:42%;
+  width:75%;
   float: left;
   height: 100vh;
-  width: 70vw;
 }
