@@ -3,11 +3,29 @@ var objectInput = document.getElementById('objectInput');
 var ligntInput = document.getElementById('lightInput');
 var submitButton = document.getElementById('submitButton');
 
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+var height = 1500;
+var width = 1500;
+
 var points = [];
+var points2d = [];
 var pointNormals = [];
 var triangles = [];
 var light = {};
-var camera = {};
+var camera;
+
+class Camera {
+  constructor(Pos, N, V, d, hx, hy, U) {
+    this.Pos = Pos;
+    this.N = N;
+    this.V = V;
+    this.d = d;
+    this.hx = hx;
+    this.hy = hy;
+    this.U = U;
+  }  
+}
 
 class Point {
   constructor(x, y, z) {
@@ -46,6 +64,118 @@ class Point {
     return new Point(this.x * camera.U.x + this.y * camera.U.y + this.z * camera.U.z,
        this.x * camera.V.x + this.y * camera.V.y + this.z * camera.V.z,
        this.x * camera.N.x + this.y * camera.N.y + this.z * camera.N.z);
+  } 
+  convertPoint() {
+    // calculando o ponto em 2d
+    let tempX = ((camera.d / camera.hx) * (this.x / this.z));
+    let tempY = ((camera.d / camera.hy) * (this.y / this.z));
+    tempX = parseInt((tempX + 1) * (width / 2), 10);
+    tempY = parseInt((1 - tempY) * (height / 2), 10);
+    return new Point2d(tempX, tempY);
+  }
+}
+
+class Point2d {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
+function getPoints2d() {
+    for (var i = 0; i<points.length; i++) {
+      points2d[i] = points[i].convertPoint();
+    }
+}
+
+function drawLine (x1, y1, x2, y2) {
+  if(x1<=x2){
+    for(var i=x1; i<=x2;i++){
+      ctx.fillRect(i, y1, 1, 1);
+    }
+  }else{
+    for(var i=x2; i<=x1;i++){
+      ctx.fillRect(i, y2, 1, 1);
+    }
+  }
+  /*
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = 'red';
+  ctx.stroke();
+  ctx.closePath();
+  */
+}
+
+function fillBottomFlatTriangle (v1, v2, v3) {
+  var invslope1 = (v2.x - v1.x) / (v2.y - v1.y);
+  var invslope2 = (v3.x - v1.x) / (v3.y - v1.y);
+
+  var curx1 = v1.x;
+  var curx2 = v1.x;
+
+  for (var scanlineY = v1.y; scanlineY <= v2.y; scanlineY++)
+  {
+    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY);
+    curx1 += invslope1;
+    curx2 += invslope2;
+  }
+}
+
+function fillTopFlatTriangle(v1, v2, v3) {
+  var invslope1 = (v3.x - v1.x) / (v3.y - v1.y);
+  var invslope2 = (v3.x - v2.x) / (v3.y - v2.y);
+
+  var curx1 = v3.x;
+  var curx2 = v3.x;
+
+  for (var scanlineY = v3.y; scanlineY > v1.y; scanlineY--) {
+    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY);
+    curx1 -= invslope1;
+    curx2 -= invslope2;
+  }
+}
+
+function drawTriangle(v1, v2, v3){
+   /* at first sort the three vertices by y-coordinate ascending so v1 is the topmost vertice */
+  var t;
+  if(v1.y > v2.y){
+    t = v1;
+    v1 = v2;
+    v2 = t;
+  }
+  if(v1.y > v3.y){
+    t = v1;
+    v1 = v3;
+    v3 = t;
+  }
+  if(v2.y > v3.y){
+    t = v2;
+    v2 = v3;
+    v3 = t;
+  }
+
+  /* here we know that v1.y <= v2.y <= v3.y */
+  /* check for trivial case of bottom-flat triangle */
+  if (v2.y == v3.y)
+  {
+    fillBottomFlatTriangle(v1, v2, v3);
+  }
+  /* check for trivial case of top-flat triangle */
+  else if (v1.y == v2.y)
+  {
+    fillTopFlatTriangle(v1, v2, v3);
+  } 
+  else
+  {
+    /* general case - split the triangle in a topflat and bottom-flat one */
+    var v4 = new Point2d( 
+    parseInt((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x)), 10), v2.y);
+    
+    fillBottomFlatTriangle(v1, v2, v4);
+    fillTopFlatTriangle(v2, v4, v3);
   }
 }
 
@@ -57,33 +187,34 @@ class Triangle{
   }
 }
 
-function setupCamera(){
+async function setupCamera(){
     var reader = new FileReader();
 
     reader.onload = function(e) {
         var cameraData = reader.result.split('\n');
         var fileLine = cameraData[0].split(' ');
-        camera.Pos = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        let Pos = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         fileLine = cameraData[1].split(' ');
-        camera.N = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        let N = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         fileLine = cameraData[2].split(' ');
-        camera.V = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
+        let V = new Point(Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         // Ortogonizar vetor V
-        camera.V = camera.V.sub(camera.N.proj(camera.V));
+        V = V.sub(N.proj(V));
         fileLine = cameraData[3].split(' ');
-        camera.d = Number(fileLine[0]);
-        camera.hx = Number(fileLine[1]);
-        camera.hy = Number(fileLine[2]);
+        let d = Number(fileLine[0]);
+        let hx = Number(fileLine[1]);
+        let hy = Number(fileLine[2]);
         // Normalizar V e N para calcular U já normalizado
-        camera.V.normalize();
-        camera.N.normalize();
-        camera.U = camera.N.crossProduct(camera.V);
+        V = V.normalize();
+        N = N.normalize();
+        let U = N.crossProduct(V);
+        camera = new Camera(Pos, N, V, d, hx, hy, U);
     }
     var file = cameraInput.files[0];
-    reader.readAsText(file);
+    await reader.readAsText(file);
 }
 
-function setupObject() {
+async function setupObject() {
     var reader = new FileReader();
     reader.onload = function(e) {
       var objectData = reader.result.split('\n');
@@ -101,10 +232,10 @@ function setupObject() {
       }
     }
     var file = objectInput.files[0];
-    reader.readAsText(file);
+    await reader.readAsText(file);
 }
 
-function setupLight(){
+async function setupLight(){
     var reader = new FileReader();
     reader.onload = function(e){
         var lightData = reader.result.split('\n');
@@ -123,10 +254,10 @@ function setupLight(){
         light.n = Number(lightData[7]);
     }
     var file = lightInput.files[0];
-    reader.readAsText(file);
+    await reader.readAsText(file);
 }
 
-function setupNormals(){
+async function setupNormals(){
     for (var i = 0; i < triangles.length; i++) {
         var a = points[triangles[i].p1];
         var b = points[triangles[i].p2];
@@ -143,9 +274,25 @@ function setupNormals(){
     }
 }
 
-submitButton.addEventListener('click', e => {
+function drawObject() {
+  getPoints2d();
+  for (var i = 0; i < triangles.length; i++) {
+    drawTriangle(points2d[triangles[i].p1], points2d[triangles[i].p2], points2d[triangles[i].p3]);
+  }
+}
+
+submitButton.addEventListener('click', async e => {
     setupCamera();
     setupObject();
     setupLight();
     setupNormals();
+    setTimeout(function(){
+      drawObject();
+    }, 5000);
+});
+
+addButton.addEventListener('click', e => {
+    var x = document.createElement("INPUT");
+    x.setAttribute("type", "file");
+    a.appendChild(x);
 });
