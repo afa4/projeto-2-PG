@@ -12,9 +12,10 @@ var points = [];
 var points2d = [];
 var pointNormals = [];
 var triangles = [];
-// var zb = [[]]; // Array zbuffer
+var zb = []; // Array zbuffer
 var light = {};
 var camera;
+
 
 class Camera {
   constructor(Pos, N, V, d, hx, hy, U) {
@@ -266,24 +267,25 @@ async function setupNormals(){
     }
 }
 
-// class Zbuffer{
-//   constructor(distance, r, g, b){
-//     this.distance = distance;
+class Zbuffer{
+  constructor(distance, r, g, b){
+    this.distance = distance;
 
-//     //COR:
-//     this.r = r;
-//     this.g = g;
-//     this.b = b;
-//   }
-// }
+    //COR:
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  }
+}
 
-// function setUpZbuffer(){
-//   for (var i = 0; i < width; i++) {
-//     for (var j = 0; j < height; j++) {
-//       zb[i][j] = new Zbuffer(Infinity, '000', '000', '000');
-//     }
-//   }
-// }
+function setUpZbuffer(){
+  for(let i = 0; i < width; i++){
+    zb[i] = [];
+    for (var j = 0; j < height; j++) {
+      zb[i][j] = new Zbuffer(Infinity, 0, 0, 0);
+    }
+  }
+}
 
 
 function drawObject() {
@@ -294,6 +296,7 @@ function drawObject() {
 }
 
 submitButton.addEventListener('click', async e => {
+
      setupCamera();
      setupObject();
      setupLight();
