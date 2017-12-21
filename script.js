@@ -5,13 +5,14 @@ var submitButton = document.getElementById('submitButton');
 
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
-var height = 1500;
-var width = 1500;
+var height = 703;
+var width = 1346;
 
 var points = [];
 var points2d = [];
 var pointNormals = [];
 var triangles = [];
+// var zb = [[]]; // Array zbuffer
 var light = {};
 var camera;
 
@@ -61,9 +62,10 @@ class Point {
     return this;
   }
   adaptView() {
-    return new Point(this.x * camera.U.x + this.y * camera.U.y + this.z * camera.U.z,
-       this.x * camera.V.x + this.y * camera.V.y + this.z * camera.V.z,
-       this.x * camera.N.x + this.y * camera.N.y + this.z * camera.N.z);
+    let temp = this.sub(camera.Pos);
+    return new Point(temp.x * camera.U.x + temp.y * camera.U.y + temp.z * camera.U.z,
+       temp.x * camera.V.x + temp.y * camera.V.y + temp.z * camera.V.z,
+       temp.x * camera.N.x + temp.y * camera.N.y + temp.z * camera.N.z);
   } 
   convertPoint() {
     // calculando o ponto em 2d
@@ -89,6 +91,7 @@ function getPoints2d() {
 }
 
 function drawLine (x1, y1, x2, y2) {
+  ctx.fillStyle="#FF0000";
   if(x1<=x2){
     for(var i=x1; i<=x2;i++){
       ctx.fillRect(i, y1, 1, 1);
@@ -98,15 +101,6 @@ function drawLine (x1, y1, x2, y2) {
       ctx.fillRect(i, y2, 1, 1);
     }
   }
-  /*
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = 'red';
-  ctx.stroke();
-  ctx.closePath();
-  */
 }
 
 function fillBottomFlatTriangle (v1, v2, v3) {
@@ -139,7 +133,7 @@ function fillTopFlatTriangle(v1, v2, v3) {
 }
 
 function drawTriangle(v1, v2, v3){
-   /* at first sort the three vertices by y-coordinate ascending so v1 is the topmost vertice */
+
   var t;
   if(v1.y > v2.y){
     t = v1;
@@ -157,20 +151,18 @@ function drawTriangle(v1, v2, v3){
     v3 = t;
   }
 
-  /* here we know that v1.y <= v2.y <= v3.y */
-  /* check for trivial case of bottom-flat triangle */
   if (v2.y == v3.y)
   {
     fillBottomFlatTriangle(v1, v2, v3);
   }
-  /* check for trivial case of top-flat triangle */
+
   else if (v1.y == v2.y)
   {
     fillTopFlatTriangle(v1, v2, v3);
   } 
   else
   {
-    /* general case - split the triangle in a topflat and bottom-flat one */
+
     var v4 = new Point2d( 
     parseInt((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x)), 10), v2.y);
     
@@ -274,6 +266,26 @@ async function setupNormals(){
     }
 }
 
+// class Zbuffer{
+//   constructor(distance, r, g, b){
+//     this.distance = distance;
+
+//     //COR:
+//     this.r = r;
+//     this.g = g;
+//     this.b = b;
+//   }
+// }
+
+// function setUpZbuffer(){
+//   for (var i = 0; i < width; i++) {
+//     for (var j = 0; j < height; j++) {
+//       zb[i][j] = new Zbuffer(Infinity, '000', '000', '000');
+//     }
+//   }
+// }
+
+
 function drawObject() {
   getPoints2d();
   for (var i = 0; i < triangles.length; i++) {
@@ -282,13 +294,13 @@ function drawObject() {
 }
 
 submitButton.addEventListener('click', async e => {
-    setupCamera();
-    setupObject();
-    setupLight();
-    setupNormals();
-    setTimeout(function(){
-      drawObject();
-    }, 5000);
+     setupCamera();
+     setupObject();
+     setupLight();
+     setupNormals();
+     setTimeout(function(){
+       drawObject();
+     }, 5000);
 });
 
 addButton.addEventListener('click', e => {
