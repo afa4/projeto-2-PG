@@ -15,6 +15,8 @@ var triangles = [];
 var zb = []; // Array zbuffer
 var light = {};
 var camera;
+var triangleIndex;
+var objects = 1;
 
 
 class Camera {
@@ -46,17 +48,25 @@ class Point {
   mult(n) {
     return new Point(n * this.x, n * this.y, n * this.z);
   }
+  multVectors(v){
+    return new Point (this.x * v.x, this.y * v.y, this.z * v.z);
+  }
   sub(v) {
     return new Point(this.x - v.x, this.y - v.y, this.z - v.z);
+  }
+  sum(v) {
+    return new Point(this.x + v.x, this.y + v.y, this.z + v.z);
   }
   // Projetar v no ponto em questão
   proj(v) {
     var dotsResult = v.dotProduct(this) / this.dotProduct(this);
     return this.mult(dotsResult);
   }
+  norm() {
+    return Math.sqrt(this.dotProduct(this));
+  }
   normalize() {
-    var norm = Math.sqrt(this.dotProduct(this));
-    var v = this.mult(1/norm);
+    var v = this.mult(1/this.norm());
     this.x = v.x;
     this.y = v.y;
     this.z = v.z;
@@ -83,6 +93,19 @@ class Point2d {
     this.x = x;
     this.y = y;
   }
+
+  sub(v) {
+    return new Point2d(this.x - v.x, this.y - v.y);
+  }
+
+  crossProduct(v){
+    return new Point(this.y * 1 - 1 * v.y, 1 * v.x - this.x * 1, this.x * v.y - this.y * v.x);
+  }
+
+  norm() {
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
 }
 
 function getPoints2d() {
@@ -91,14 +114,23 @@ function getPoints2d() {
     }
 }
 
-function drawLine (x1, y1, x2, y2) {
-  ctx.fillStyle="#FF0000";
+function drawLine (x1, y1, x2, y2, vectors) {
   if(x1<=x2){
     for(var i=x1; i<=x2;i++){
+      var cor = phongIlumination(new Point2d(i,y1), vectors.v1, vectors.v2, vectors.v3);
+      var red = parseInt(cor.x,10);
+      var green = parseInt(cor.y,10);
+      var blue = parseInt(cor.z,10);
+      ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
       ctx.fillRect(i, y1, 1, 1);
     }
   }else{
     for(var i=x2; i<=x1;i++){
+      var cor = phongIlumination(new Point2d(i,y1), vectors.v1, vectors.v2, vectors.v3);
+      var red = parseInt(cor.x,10);
+      var green = parseInt(cor.y,10);
+      var blue = parseInt(cor.z,10);
+      ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
       ctx.fillRect(i, y2, 1, 1);
     }
   }
@@ -111,9 +143,8 @@ function fillBottomFlatTriangle (v1, v2, v3) {
   var curx1 = v1.x;
   var curx2 = v1.x;
 
-  for (var scanlineY = v1.y; scanlineY <= v2.y; scanlineY++)
-  {
-    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY);
+  for (var scanlineY = v1.y; scanlineY <= v2.y; scanlineY++) {
+    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY, {v1, v2, v3});
     curx1 += invslope1;
     curx2 += invslope2;
   }
@@ -127,7 +158,7 @@ function fillTopFlatTriangle(v1, v2, v3) {
   var curx2 = v3.x;
 
   for (var scanlineY = v3.y; scanlineY > v1.y; scanlineY--) {
-    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY);
+    drawLine(parseInt(curx1, 10), scanlineY, parseInt(curx2, 10), scanlineY, {v1, v2, v3});
     curx1 -= invslope1;
     curx2 -= invslope2;
   }
@@ -152,18 +183,11 @@ function drawTriangle(v1, v2, v3){
     v3 = t;
   }
 
-  if (v2.y == v3.y)
-  {
+  if (v2.y == v3.y) {
     fillBottomFlatTriangle(v1, v2, v3);
-  }
-
-  else if (v1.y == v2.y)
-  {
+  } else if (v1.y == v2.y) {
     fillTopFlatTriangle(v1, v2, v3);
-  } 
-  else
-  {
-
+  } else {
     var v4 = new Point2d( 
     parseInt((v1.x + ((v2.y - v1.y) / (v3.y - v1.y)) * (v3.x - v1.x)), 10), v2.y);
     
@@ -236,10 +260,10 @@ async function setupLight(){
         var lPos = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         light.Pos = lPos.adaptView();
         light.ka = Number(lightData[1]);
-        fileLine = lightData[2].split(' ')
+        fileLine = lightData[2].split(' ');
         light.ia = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         light.kd = Number(lightData[3]);
-        fileLine = lightData[4].split(' ')
+        fileLine = lightData[4].split(' ');
         light.od = new Point (Number(fileLine[0]), Number(fileLine[1]), Number(fileLine[2]));
         light.ks = Number(lightData[5]);
         fileLine = lightData[6].split(' ');
@@ -251,6 +275,9 @@ async function setupLight(){
 }
 
 async function setupNormals(){
+    for (var i = 0; i < points.length; i++) {
+      pointNormals[i] = new Point(0, 0, 0);
+    }
     for (var i = 0; i < triangles.length; i++) {
         var a = points[triangles[i].p1];
         var b = points[triangles[i].p2];
@@ -260,10 +287,13 @@ async function setupNormals(){
         var v2 = a.sub(c);
 
         var normal = v1.crossProduct(v2).normalize();
+        if (normal.z < 0) {
+          normal = normal.mult(-1);
+        }
 
-        pointNormals[triangles[i].p1] += normal;
-        pointNormals[triangles[i].p2] += normal;
-        pointNormals[triangles[i].p3] += normal;
+        pointNormals[triangles[i].p1] = pointNormals[triangles[i].p1].sum(normal);
+        pointNormals[triangles[i].p2] = pointNormals[triangles[i].p2].sum(normal);
+        pointNormals[triangles[i].p3] = pointNormals[triangles[i].p3].sum(normal);
     }
 }
 
@@ -291,18 +321,92 @@ function setUpZbuffer(){
 function drawObject() {
   getPoints2d();
   for (var i = 0; i < triangles.length; i++) {
+    triangleIndex = i;
     drawTriangle(points2d[triangles[i].p1], points2d[triangles[i].p2], points2d[triangles[i].p3]);
   }
 }
 
-submitButton.addEventListener('click', async e => {
+function barCords(p, p1, p2, p3) {
+  let totalArea = p2.sub(p1).crossProduct(p3.sub(p1)).norm() / 2;
+  let areaAlpha = ((p2.sub(p)).crossProduct(p3.sub(p))).norm() / 2;
+  let areaBeta = ((p1.sub(p)).crossProduct(p3.sub(p))).norm() / 2;
+  let alpha = areaAlpha / totalArea;
+  let beta = areaBeta / totalArea;
+  let gama = 1 - alpha - beta;
+  return {alpha, beta, gama};
+}
 
+function phongIlumination(p, p1, p2, p3) {
+  // Pegar pontos 3d
+  let v1 = points[triangles[triangleIndex].p1];
+  let v2 = points[triangles[triangleIndex].p2];
+  let v3 = points[triangles[triangleIndex].p3];
+  // Calculando alpha, beta e gama
+  let barCord = barCords(p, p1, p2, p3);
+  // P = alpha * p1 + beta * p2 + gama + p3
+  let P = ((v1.mult(barCord.alpha)).sum(v2.mult(barCord.beta))).sum(v3.mult(barCord.gama));
+  let alphaNorma = pointNormals[triangles[triangleIndex].p1].mult(barCord.alpha);
+  let betaNorma = pointNormals[triangles[triangleIndex].p2].mult(barCord.beta);
+  let gamaNorma = pointNormals[triangles[triangleIndex].p3].mult(barCord.gama);
+  // Calcular soma das normas multiplicadas pelas coordenadas baricêntricas
+  let pNormal =  (alphaNorma.sum(betaNorma)).sum(gamaNorma);
+  let V = P.mult(-1);
+  let L = (light.Pos).sub(P);
+  let R = ((pNormal.mult(pNormal.dotProduct(L))).mult(2)).sub(L);
+  pNormal.normalize();
+  V.normalize();
+  L.normalize();
+  R.normalize();
+  
+  //VERIFICAÇÃO DA NORMAL INVERTIDA:
+  if(V.dotProduct(pNormal) < 0){
+    pNormal = pNormal.mult(-1);
+  }
+
+  //CALCULO DAS ILUMINAÇÕES:
+
+  // ILUMINAÇÃO AMBIENTE:
+
+  let ambiental = light.ia.mult(light.ka);
+
+  //ILUMINAÇÃO DIFUSA:
+
+  let difusa = light.il.multVectors(light.od).mult(L.dotProduct(pNormal) * light.kd);
+  
+  //ILUMINAÇÃO ESPECULAR:
+ 
+  let especular = light.il.mult(light.ks * Math.pow(R.dotProduct(V),light.n));
+  
+
+  if(pNormal.dotProduct(L) < 0){
+
+    difusa = new Point(0,0,0);
+    especular = new Point(0,0,0);
+
+  }else if (R.dotProduct(V) < 0){
+
+    especular = new Point(0,0,0);
+
+  }
+
+  let ilumination = ambiental.sum(difusa).sum(especular);
+
+  ilumination.x = Math.min(ilumination.x, 255);
+  ilumination.y = Math.min(ilumination.y, 255);
+  ilumination.z = Math.min(ilumination.z, 255);
+
+  return ilumination;
+}
+  
+    
+
+submitButton.addEventListener('click', async e => {
      setupCamera();
      setupObject();
      setupLight();
-     setupNormals();
      setTimeout(function(){
-       drawObject();
+      setupNormals();
+      drawObject();
      }, 5000);
 });
 
@@ -310,4 +414,5 @@ addButton.addEventListener('click', e => {
     var x = document.createElement("INPUT");
     x.setAttribute("type", "file");
     a.appendChild(x);
+    objects++;
 });
