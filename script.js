@@ -118,20 +118,24 @@ function drawLine (x1, y1, x2, y2, vectors) {
   if(x1<=x2){
     for(var i=x1; i<=x2;i++){
       var cor = phongIlumination(new Point2d(i,y1), vectors.v1, vectors.v2, vectors.v3);
-      var red = parseInt(cor.x,10);
-      var green = parseInt(cor.y,10);
-      var blue = parseInt(cor.z,10);
-      ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
-      ctx.fillRect(i, y1, 1, 1);
+      if(cor !=  null){
+        var red = parseInt(cor.x,10);
+        var green = parseInt(cor.y,10);
+        var blue = parseInt(cor.z,10);
+        ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
+        ctx.fillRect(i, y1, 1, 1);
+      }
     }
   }else{
     for(var i=x2; i<=x1;i++){
       var cor = phongIlumination(new Point2d(i,y1), vectors.v1, vectors.v2, vectors.v3);
-      var red = parseInt(cor.x,10);
-      var green = parseInt(cor.y,10);
-      var blue = parseInt(cor.z,10);
-      ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
-      ctx.fillRect(i, y2, 1, 1);
+      if(cor != null){
+        var red = parseInt(cor.x,10);
+        var green = parseInt(cor.y,10);
+        var blue = parseInt(cor.z,10);
+        ctx.fillStyle = "rgb(" + red + "," + green + "," + blue + ")";
+        ctx.fillRect(i, y2, 1, 1);
+      }
     }
   }
 }
@@ -297,26 +301,22 @@ async function setupNormals(){
     }
 }
 
-class Zbuffer{
-  constructor(distance, r, g, b){
-    this.distance = distance;
-
-    //COR:
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  }
-}
-
 function setUpZbuffer(){
   for(let i = 0; i < width; i++){
     zb[i] = [];
     for (var j = 0; j < height; j++) {
-      zb[i][j] = new Zbuffer(Infinity, 0, 0, 0);
+      zb[i][j] = Infinity;
     }
   }
 }
 
+function checkZ(p2d, p3d){
+  if(zb[p2d.x][p2d.y] > p3d.z){
+    zb[p2d.x][p2d.y] = p3d.z;
+    return true;
+  }
+  return false;
+}
 
 function drawObject() {
   getPoints2d();
@@ -345,6 +345,11 @@ function phongIlumination(p, p1, p2, p3) {
   let barCord = barCords(p, p1, p2, p3);
   // P = alpha * p1 + beta * p2 + gama + p3
   let P = ((v1.mult(barCord.alpha)).sum(v2.mult(barCord.beta))).sum(v3.mult(barCord.gama));
+
+  if(!checkZ(p,P)){
+    return null;
+  }
+
   let alphaNorma = pointNormals[triangles[triangleIndex].p1].mult(barCord.alpha);
   let betaNorma = pointNormals[triangles[triangleIndex].p2].mult(barCord.beta);
   let gamaNorma = pointNormals[triangles[triangleIndex].p3].mult(barCord.gama);
@@ -404,10 +409,13 @@ submitButton.addEventListener('click', async e => {
      setupCamera();
      setupObject();
      setupLight();
+     setUpZbuffer();
+
      setTimeout(function(){
       setupNormals();
       drawObject();
      }, 5000);
+
 });
 
 addButton.addEventListener('click', e => {
